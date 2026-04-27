@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SplitTicket — Divide tu cuenta</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: #2a2a35;
+    --accent: #f0a04b;
+    --accent2: #f5c97a;
+    --green: #5cc88a;
+    --red: #e06060;
+    --text: #eeeaf4;
+    --muted: #7a7490;
+    --taken: #e06060;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 900; color: var(--accent2); }
+  .logo span { color: var(--accent); }
+  .logo-sub { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+  /* ── Steps nav ── */
+  .steps {
+    display: flex; align-items: center; gap: 0;
+    padding: 0 20px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .steps::-webkit-scrollbar { display: none; }
+  .step {
+    padding: 12px 16px; font-family: 'DM Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); white-space: nowrap; position: relative;
+    border-bottom: 2px solid transparent; cursor: default;
+    transition: color 0.2s;
+  }
+  .step.done { color: var(--green); }
+  .step.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .step-arrow { color: var(--border); font-size: 0.7rem; padding: 0 4px; }
+
+  /* ── Pantallas ── */
+  .screen { display: none; padding: 24px 20px; max-width: 480px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  /* PANTALLA 1: Foto */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 48px 24px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .upload-zone:hover { border-color: var(--accent); background: rgba(240,160,75,0.04); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+  .upload-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--text); margin-bottom: 6px; }
+  .upload-sub { font-size: 0.8rem; color: var(--muted); }
+
+  .preview-wrap { position: relative; margin: 16px 0; border-radius: 10px; overflow: hidden; }
+  .preview-wrap img { width: 100%; border-radius: 10px; display: block; }
+  .preview-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.2s; cursor: pointer; border-radius: 10px;
+  }
+  .preview-wrap:hover .preview-overlay { opacity: 1; }
+  .preview-overlay span { color: #fff; font-size: 0.8rem; font-family: 'DM Mono', monospace; letter-spacing: 1px; }
+
+  /* PANTALLA 2: Analizando */
+  .analyzing-box {
+    text-align: center; padding: 48px 20px;
+  }
+  .spinner {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    margin: 0 auto 24px; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .analyzing-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--accent2); margin-bottom: 8px; }
+  .analyzing-sub { font-size: 0.8rem; color: var(--muted); }
+
+  /* PANTALLA 3: Comensales */
+  .section-label {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 3px; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .input-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .inp {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
+    transition: border-color 0.15s;
+  }
+  .inp:focus { border-color: var(--accent); }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; transition: all 0.15s; flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
+  .btn-dashed {
+    width: 100%; padding: 10px; border: 1px dashed var(--border); border-radius: 6px;
+    background: transparent; color: var(--muted); font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; letter-spacing: 1px; cursor: pointer; transition: all 0.15s;
+    margin-bottom: 20px;
+  }
+  .btn-dashed:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Ticket preview */
+  .ticket-preview {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; margin-bottom: 20px;
+  }
+  .ticket-preview-head {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .ticket-preview-head h3 { font-family: 'Playfair Display', serif; font-size: 0.95rem; color: var(--accent2); }
+  .ticket-preview-head small { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); }
+  .ticket-item-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 16px; border-bottom: 1px solid var(--surface2);
+    font-size: 0.82rem;
+  }
+  .ticket-item-row:last-child { border-bottom: none; }
+  .ticket-item-qty { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--muted); margin-right:8px; }
+  .ticket-item-price { font-family:'DM Mono',monospace; font-size:0.8rem; color:var(--accent); }
+  .ticket-total-row {
+    background: var(--surface2); padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--border);
+  }
+  .ticket-total-label { font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+  .ticket-total-val { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--accent2); font-weight:700; }
+
+  /* PANTALLA 4: Asignación */
+  .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 0; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0; padding: 8px 14px; border-radius: 20px 20px 0 0;
+    background: var(--surface); color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; cursor: pointer;
+    border: none; transition: all 0.15s; color: var(--muted);
+  }
+  .tab.active { background: var(--surface2); color: var(--text); }
+  .tab .tab-sub { font-size: 0.58rem; color: var(--accent); display: block; margin-top: 1px; }
+
+  .ticket-card {
+    background: var(--surface2); border-radius: 0 8px 8px 8px;
+    overflow: hidden; border: 1px solid var(--border); border-top: none;
+    margin-bottom: 16px;
+  }
+
+  .item-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+    user-select: none; transition: background 0.12s;
+  }
+  .item-row:hover:not(.disabled) { background: rgba(240,160,75,0.06); }
+  .item-row.selected { background: rgba(240,160,75,0.1); }
+  .item-row.disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .cb {
+    width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    background: var(--surface); transition: all 0.15s;
+  }
+  .item-row.selected .cb { background: var(--accent); border-color: var(--accent); }
+  .cb svg { display: none; }
+  .item-row.selected .cb svg { display: block; }
+
+  .item-name-wrap { flex: 1; }
+  .item-name { font-size: 0.83rem; color: var(--text); font-weight: 500; }
+  .item-tag { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--muted); margin-top:2px; }
+  .item-tag.taken { color: var(--taken); }
+  .item-price-col { font-family:'DM Mono',monospace; font-size:0.82rem; color:var(--muted); flex-shrink:0; }
+  .item-row.selected .item-price-col { color: var(--accent); }
+
+  /* Spinner pato/cantidad */
+  .qty-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  .qty-info { flex: 1; font-size: 0.8rem; color: var(--text); }
+  .qty-info small { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--muted); display:block; }
+  .qty-spin { display:flex; align-items:center; gap:10px; }
+  .qty-btn {
+    width:26px; height:26px; border-radius:50%; border:1px solid var(--border);
+    background:var(--surface2); color:var(--muted); cursor:pointer; font-size:0.9rem;
+    display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+  }
+  .qty-btn:hover { background:var(--accent); color:#000; border-color:var(--accent); }
+  .qty-val { font-family:'DM Mono',monospace; font-size:0.85rem; color:var(--text); min-width:16px; text-align:center; }
+  .qty-price { font-family:'DM Mono',monospace; font-size:0.82rem; color:var(--accent); min-width:70px; text-align:right; }
+
+  /* Propina */
+  .propina-section { padding: 14px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .propina-title { font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .chip {
+    padding:5px 12px; border-radius:20px; border:1px solid var(--border);
+    background:var(--surface2); font-family:'DM Mono',monospace; font-size:0.7rem;
+    color:var(--muted); cursor:pointer; transition:all 0.15s; user-select:none;
+  }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  .chip.active { background:var(--accent); border-color:var(--accent); color:#000; font-weight:500; }
+  .chip.custom-chip { border-style:dashed; }
+  .custom-inp-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .custom-inp-row input {
+    flex:1; background:var(--surface2); border:1px solid var(--border);
+    border-radius:5px; padding:7px 10px; color:var(--text);
+    font-family:'DM Mono',monospace; font-size:0.82rem; outline:none;
+    transition:border-color 0.15s;
+  }
+  .custom-inp-row input:focus { border-color:var(--accent); }
+  .custom-inp-row span { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--muted); }
+  .propina-result {
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--surface2); border-radius:5px; padding:9px 12px; border:1px solid var(--border);
+  }
+  .propina-result-label { font-size:0.78rem; color:var(--text); }
+  .propina-result-label small { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--muted); display:block; }
+  .propina-monto { font-family:'DM Mono',monospace; font-size:0.95rem; font-weight:500; color:var(--green); }
+
+  /* Total del comensal */
+  .comensal-total {
+    background: #0c0c0f; padding: 16px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .ct-label { font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); }
+  .ct-sub { font-family:'DM Mono',monospace; font-size:0.65rem; color:#3a3a50; margin-top:3px; }
+  .ct-amount { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:900; color:var(--accent2); letter-spacing:-1px; }
+
+  /* RESUMEN */
+  .resumen-card {
+    background: var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden;
+    margin-top: 20px;
+  }
+  .resumen-card-head { padding:14px 16px; border-bottom:1px solid var(--border); font-family:'Playfair Display',serif; font-size:1rem; color:var(--accent2); }
+  .resumen-item { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--surface2); }
+  .ri-name { font-size:0.83rem; color:var(--text); font-weight:500; }
+  .ri-sub { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--muted); margin-top:3px; }
+  .ri-right { text-align:right; }
+  .ri-sub2 { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--muted); }
+  .ri-total { font-family:'DM Mono',monospace; font-size:0.92rem; font-weight:500; color:var(--accent); }
+  .ri-propina { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--green); margin-top:2px; }
+  .resumen-footer { background:var(--surface2); padding:14px 16px; display:flex; justify-content:space-between; align-items:center; }
+  .rf-label { font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); }
+  .rf-amount { font-family:'Playfair Display',serif; font-size:1.4rem; font-weight:700; color:var(--accent2); }
+  .resumen-propinas { padding:10px 16px; background:rgba(92,200,138,0.08); border-top:1px solid rgba(92,200,138,0.2); font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--green); }
+  .resumen-warn { padding:10px 16px; background:rgba(240,160,75,0.08); border-top:1px solid rgba(240,160,75,0.15); font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--accent); }
+
+  /* Botón primario */
+  .btn-primary {
+    width:100%; padding:14px; background:linear-gradient(90deg,var(--accent),var(--accent2));
+    border:none; border-radius:6px; color:#0c0c0f; font-family:'DM Mono',monospace;
+    font-size:0.8rem; font-weight:500; letter-spacing:2px; text-transform:uppercase;
+    cursor:pointer; margin-top:12px; transition:opacity 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { opacity:0.9; transform:translateY(-1px); }
+  .btn-secondary {
+    width:100%; padding:11px; background:transparent; border:1px solid var(--border);
+    border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace;
+    font-size:0.75rem; letter-spacing:1px; cursor:pointer; margin-top:8px;
+    transition:all 0.15s;
+  }
+  .btn-secondary:hover { border-color:var(--accent); color:var(--accent); }
+
+  .error-box {
+    background:rgba(224,96,96,0.1); border:1px solid var(--red); border-radius:6px;
+    padding:12px 16px; font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--red);
+    margin-top:12px; display:none;
+  }
+
+  /* info box */
+  .info-box {
+    background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:0 6px 6px 0; padding:12px 14px; font-size:0.78rem; color:var(--muted);
+    margin-bottom:20px; line-height:1.6;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Split<span>Ticket</span></div>
+    <div class="logo-sub">Divide tu cuenta · con IA</div>
+  </div>
+</header>
+
+<div class="steps" id="steps-nav">
+  <div class="step active" id="step-1">1 · Foto</div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="step-2">2 · Comensales</div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="step-3">3 · Asignación</div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="step-4">4 · Resumen</div>
+</div>
+
+<!-- ── PANTALLA 1: Foto ── -->
+<div class="screen active" id="screen-1">
+  <div class="info-box">
+    📸 Toma una foto del ticket o selecciona una imagen de tu galería. La IA extraerá automáticamente los platillos y el total.
+  </div>
+
+  <!-- Botones de selección -->
+  <div id="upload-zone" style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+    <!-- Cámara -->
+    <label style="display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; cursor:pointer; transition:border-color 0.2s;">
+      <input type="file" accept="image/*" capture="environment" style="display:none" onchange="onFileSelected(event)">
+      <span style="font-size:2rem;">📷</span>
+      <div>
+        <div style="font-family:'Playfair Display',serif; font-size:1rem; color:var(--text); margin-bottom:3px;">Abrir cámara</div>
+        <div style="font-size:0.75rem; color:var(--muted);">Toma la foto del ticket ahora</div>
+      </div>
+    </label>
+    <!-- Galería -->
+    <label style="display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; cursor:pointer; transition:border-color 0.2s;">
+      <input type="file" accept="image/*" style="display:none" onchange="onFileSelected(event)">
+      <span style="font-size:2rem;">🖼️</span>
+      <div>
+        <div style="font-family:'Playfair Display',serif; font-size:1rem; color:var(--text); margin-bottom:3px;">Seleccionar de galería</div>
+        <div style="font-size:0.75rem; color:var(--muted);">Elige una foto ya tomada</div>
+      </div>
+    </label>
+  </div>
+
+  <div id="preview-container" style="display:none">
+    <div class="preview-wrap">
+      <img id="preview-img" src="" alt="ticket">
+      <div class="preview-overlay" style="display:flex; flex-direction:column; gap:10px;">
+        <label style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:8px 16px; cursor:pointer; color:#fff; font-family:'DM Mono',monospace; font-size:0.72rem; letter-spacing:1px;">
+          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="onFileSelected(event)">
+          📷 Cámara
+        </label>
+        <label style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:8px 16px; cursor:pointer; color:#fff; font-family:'DM Mono',monospace; font-size:0.72rem; letter-spacing:1px;">
+          <input type="file" accept="image/*" style="display:none" onchange="onFileSelected(event)">
+          🖼️ Galería
+        </label>
+      </div>
+    </div>
+  </div>
+  <div class="error-box" id="error-1"></div>
+  <button class="btn-primary" id="btn-analizar" style="display:none" onclick="analizarTicket()">✦ Analizar ticket con IA</button>
+</div>
+
+<!-- ── PANTALLA 2: Analizando ── -->
+<div class="screen" id="screen-analyzing">
+  <div class="analyzing-box">
+    <div class="spinner"></div>
+    <div class="analyzing-title">Leyendo tu ticket…</div>
+    <div class="analyzing-sub">Claude está extrayendo los platillos y el total</div>
+  </div>
+</div>
+
+<!-- ── PANTALLA 3: Comensales ── -->
+<div class="screen" id="screen-2">
+  <div class="section-label" style="margin-bottom:12px">Ticket detectado</div>
+  <div class="ticket-preview" id="ticket-preview-box"></div>
+  <div class="section-label">Comensales</div>
+  <div id="comensales-lista"></div>
+  <button class="btn-dashed" onclick="agregarComensal()">+ Agregar comensal</button>
+  <button class="btn-primary" onclick="irAsignacion()">Continuar → Asignar platillos</button>
+  <button class="btn-secondary" onclick="volverFoto()">← Cambiar foto</button>
+</div>
+
+<!-- ── PANTALLA 4: Asignación ── -->
+<div class="screen" id="screen-3">
+  <div class="tabs" id="tabs"></div>
+  <div id="tickets-container"></div>
+  <div class="resumen-card" id="resumen-card" style="display:none">
+    <div class="resumen-card-head">📋 Resumen de la mesa</div>
+    <div id="resumen-body"></div>
+    <div class="resumen-propinas" id="resumen-propinas"></div>
+    <div class="resumen-footer">
+      <div>
+        <div class="rf-label">Total a pagar</div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);margin-top:2px;" id="rf-sub"></div>
+      </div>
+      <div class="rf-amount" id="rf-total"></div>
+    </div>
+    <div class="resumen-warn" id="resumen-warn" style="display:none"></div>
+  </div>
+  <button class="btn-secondary" style="margin-top:16px" onclick="volverComensales()">← Volver a comensales</button>
+</div>
+
+<script>
+// ── Estado global ──
+let ticketData   = null;   // { restaurante, items:[{nombre,precio,qty,divisible}], total }
+let comensales   = ['', ''];
+let estado       = [];
+let tabActiva    = 0;
+let imgBase64    = null;
+const CHIPS_PCT  = [0, 10, 15, 20];
+
+// ── Paso 1: imagen ──
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imgBase64 = ev.target.result.split(',')[1];
+    document.getElementById('preview-img').src = ev.target.result;
+    document.getElementById('preview-container').style.display = 'block';
+    document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('btn-analizar').style.display = 'block';
+    document.getElementById('error-1').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analizarTicket() {
+  goScreen('analyzing');
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: imgBase64 }
+            },
+            {
+              type: 'text',
+              text: `Analiza este ticket de restaurante y extrae la información. 
+Responde ÚNICAMENTE con un JSON válido, sin texto extra, sin backticks, sin markdown.
+Formato exacto:
+{
+  "restaurante": "nombre del restaurante",
+  "items": [
+    { "nombre": "nombre del platillo", "precio": 120.00, "qty": 1, "divisible": false }
+  ],
+  "total": 500.00
+}
+Notas:
+- Si un platillo tiene qty > 1, ponlo como un solo item con qty correcto
+- "divisible" = true solo si hay exactamente 2 del mismo platillo (se puede dividir entre comensales)
+- precio es el precio UNITARIO
+- total es el total de la cuenta
+- Si no puedes leer algún precio, estima razonablemente
+- Devuelve SOLO el JSON, nada más`
+            }
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content.find(b => b.type === 'text')?.text || '';
+    ticketData = JSON.parse(text.trim());
+    renderTicketPreview();
+    renderComensalesSetup();
+    goScreen('2');
+  } catch(err) {
+    goScreen('1');
+    const el = document.getElementById('error-1');
+    el.style.display = 'block';
+    el.textContent = '⚠ No se pudo leer el ticket. Intenta con una foto más nítida.';
+  }
+}
+
+// ── Ticket preview ──
+function renderTicketPreview() {
+  const box = document.getElementById('ticket-preview-box');
+  const items = ticketData.items.map(it => `
+    <div class="ticket-item-row">
+      <span class="ticket-item-qty">×${it.qty}</span>
+      <span style="flex:1">${it.nombre}</span>
+      <span class="ticket-item-price">$${fmx(it.precio * it.qty)}</span>
+    </div>`).join('');
+  box.innerHTML = `
+    <div class="ticket-preview-head">
+      <h3>${ticketData.restaurante}</h3>
+      <small>${ticketData.items.length} platillos</small>
+    </div>
+    ${items}
+    <div class="ticket-total-row">
+      <span class="ticket-total-label">Total</span>
+      <span class="ticket-total-val">$${fmx(ticketData.total)}</span>
+    </div>`;
+}
+
+// ── Paso 2: comensales ──
+function renderComensalesSetup() {
+  document.getElementById('comensales-lista').innerHTML = comensales.map((n, i) => `
+    <div class="input-row">
+      <input class="inp" type="text" placeholder="Nombre del comensal ${i+1}" value="${n}"
+        oninput="comensales[${i}]=this.value" />
+      ${comensales.length > 1 ? `<button class="icon-btn" onclick="quitarComensal(${i})">×</button>` : ''}
+    </div>`).join('');
+}
+function agregarComensal() { comensales.push(''); renderComensalesSetup(); }
+function quitarComensal(i) { if (comensales.length > 1) { comensales.splice(i,1); renderComensalesSetup(); } }
+
+function irAsignacion() {
+  document.querySelectorAll('#comensales-lista .inp').forEach((inp, i) => {
+    comensales[i] = inp.value.trim() || `Comensal ${i+1}`;
+  });
+  // Expandir items divisibles (qty>1) en sub-items
+  const itemsExpandidos = [];
+  ticketData.items.forEach(it => {
+    if (it.qty > 1) {
+      for (let q = 0; q < it.qty; q++) {
+        itemsExpandidos.push({ ...it, qty: 1, _id: `${it.nombre}_${q}`, _label: it.qty > 1 ? `${it.nombre} (${q+1}/${it.qty})` : it.nombre });
+      }
+    } else {
+      itemsExpandidos.push({ ...it, _id: `${it.nombre}_0`, _label: it.nombre });
+    }
+  });
+  window._items = itemsExpandidos;
+
+  estado = comensales.map(nombre => ({
+    nombre, sel: new Set(), propinaPct: 10, propinaCustom: '', propinaMode: 'pct'
+  }));
+  tabActiva = 0;
+  renderTabs();
+  renderAllTickets();
+  document.getElementById('resumen-card').style.display = 'block';
+  actualizarResumen();
+  goScreen('3');
+}
+
+// ── Tabs ──
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = estado.map((e, i) => `
+    <button class="tab ${i===tabActiva?'active':''}" onclick="cambiarTab(${i})">
+      ${e.nombre}
+      <span class="tab-sub">$${fmx(calcTotal(i))}</span>
+    </button>`).join('');
+}
+function cambiarTab(i) {
+  tabActiva = i;
+  renderTabs();
+  document.querySelectorAll('.t-card').forEach((el, j) => el.style.display = j===i?'block':'none');
+}
+
+// ── Tickets ──
+function renderAllTickets() {
+  document.getElementById('tickets-container').innerHTML = estado.map((e, ci) => `
+    <div class="ticket-card t-card" id="tcard-${ci}" style="display:${ci===0?'block':'none'}">
+      <div id="items-${ci}"></div>
+      <div class="propina-section">
+        <div class="propina-title">💰 Propina</div>
+        <div class="chips" id="chips-${ci}">
+          ${CHIPS_PCT.map(p => `<div class="chip ${p===10?'active':''}" onclick="selChip(${ci},${p})">${p===0?'Sin propina':p+'%'}</div>`).join('')}
+          <div class="chip custom-chip" onclick="selCustom(${ci})">$ Fijo</div>
+        </div>
+        <div id="custom-row-${ci}" class="custom-inp-row" style="display:none">
+          <span>$</span>
+          <input type="number" min="0" placeholder="0.00" oninput="onCustom(${ci},this.value)">
+          <span>MXN</span>
+        </div>
+        <div class="propina-result">
+          <div class="propina-result-label">Propina <small id="pdesc-${ci}">10% sobre subtotal</small></div>
+          <div class="propina-monto" id="pmonto-${ci}">$0.00</div>
+        </div>
+      </div>
+      <div class="comensal-total">
+        <div>
+          <div class="ct-label">Mi total</div>
+          <div class="ct-sub" id="ct-sub-${ci}">subtotal + propina</div>
+        </div>
+        <div class="ct-amount" id="ct-${ci}">$0.00</div>
+      </div>
+    </div>`).join('');
+  estado.forEach((_, ci) => renderItems(ci));
+  actualizarTotales();
+}
+
+function renderItems(ci) {
+  const cont = document.getElementById(`items-${ci}`);
+  if (!cont) return;
+  cont.innerHTML = window._items.map((it, idx) => {
+    const selPorMi = estado[ci].sel.has(idx);
+    const tomadoPor = estado.findIndex((e, j) => j!==ci && e.sel.has(idx));
+    const disabled = tomadoPor >= 0 && !selPorMi;
+    return `<div class="item-row ${selPorMi?'selected':''} ${disabled?'disabled':''}"
+         onclick="${disabled?'':` toggleItem(${ci},${idx})`}">
+      <div class="cb">
+        <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+          <path d="M1.5 5L5 8.5L11.5 1.5" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="item-name-wrap">
+        <div class="item-name">${it._label}</div>
+        <div class="item-tag ${disabled?'taken':''}">
+          ${disabled?`✗ ${estado[tomadoPor].nombre}`:selPorMi?'✓ Tuyo':'Sin asignar'}
+        </div>
+      </div>
+      <div class="item-price-col">$${fmx(it.precio)}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleItem(ci, idx) {
+  const s = estado[ci].sel;
+  if (s.has(idx)) s.delete(idx); else s.add(idx);
+  estado.forEach((_, i) => renderItems(i));
+  actualizarTotales();
+}
+
+// ── Propina ──
+function selChip(ci, pct) {
+  estado[ci].propinaPct = pct; estado[ci].propinaMode = 'pct';
+  updateChips(ci); actualizarTotales();
+}
+function selCustom(ci) {
+  estado[ci].propinaMode = 'custom'; updateChips(ci); actualizarTotales();
+}
+function onCustom(ci, v) { estado[ci].propinaCustom = v; actualizarTotales(); }
+function updateChips(ci) {
+  const e = estado[ci];
+  document.querySelectorAll(`#chips-${ci} .chip`).forEach((ch, i) => {
+    ch.classList.toggle('active', e.propinaMode==='pct' ? CHIPS_PCT[i]===e.propinaPct : i===CHIPS_PCT.length);
+  });
+  document.getElementById(`custom-row-${ci}`).style.display = e.propinaMode==='custom'?'flex':'none';
+}
+
+// ── Cálculos ──
+function calcSubtotal(ci) {
+  let t = 0;
+  estado[ci].sel.forEach(idx => { t += window._items[idx].precio; });
+  return t;
+}
+function calcPropina(ci) {
+  const e = estado[ci]; const sub = calcSubtotal(ci);
+  return e.propinaMode==='custom' ? (parseFloat(e.propinaCustom)||0) : sub * e.propinaPct / 100;
+}
+function calcTotal(ci) { return calcSubtotal(ci) + calcPropina(ci); }
+
+function actualizarTotales() {
+  estado.forEach((e, ci) => {
+    const sub = calcSubtotal(ci), prop = calcPropina(ci), tot = sub+prop;
+    setText(`ct-${ci}`, `$${fmx(tot)}`);
+    setText(`ct-sub-${ci}`, `$${fmx(sub)} + propina $${fmx(prop)}`);
+    setText(`pmonto-${ci}`, `$${fmx(prop)}`);
+    const desc = e.propinaMode==='pct' ? (e.propinaPct===0?'Sin propina':`${e.propinaPct}% sobre $${fmx(sub)}`) : 'Monto fijo';
+    setText(`pdesc-${ci}`, desc);
+  });
+  renderTabs();
+  actualizarResumen();
+}
+
+function actualizarResumen() {
+  const body = document.getElementById('resumen-body');
+  if (!body) return;
+  body.innerHTML = estado.map((e, i) => {
+    const sub=calcSubtotal(i), prop=calcPropina(i), tot=sub+prop;
+    const pdesc = e.propinaMode==='pct' ? (e.propinaPct===0?'sin propina':`propina ${e.propinaPct}%`) : `propina fija`;
+    return `<div class="resumen-item">
+      <div><div class="ri-name">${e.nombre}</div><div class="ri-sub">${e.sel.size} platillo${e.sel.size!==1?'s':''} · ${pdesc}</div></div>
+      <div class="ri-right">
+        <div class="ri-total">$${fmx(tot)}</div>
+        <div class="ri-propina">+$${fmx(prop)} propina</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const totalMesa = ticketData?.total || 0;
+  const sumaSub   = estado.reduce((s,_,i)=>s+calcSubtotal(i),0);
+  const sumaProp  = estado.reduce((s,_,i)=>s+calcPropina(i),0);
+  const diff      = totalMesa - sumaSub;
+
+  setText('resumen-propinas', `🙏 Propina total: $${fmx(sumaProp)}`);
+  setText('rf-total', `$${fmx(sumaSub+sumaProp)}`);
+  setText('rf-sub', `cuenta $${fmx(sumaSub)} + propinas $${fmx(sumaProp)}`);
+
+  const warn = document.getElementById('resumen-warn');
+  if (Math.abs(diff) > 0.01) {
+    warn.style.display = 'block';
+    warn.textContent = diff > 0 ? `⚠ Faltan $${fmx(diff)} por asignar` : `⚠ Exceso de $${fmx(Math.abs(diff))}`;
+  } else { warn.style.display = 'none'; }
+}
+
+// ── Navegación ──
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id==='analyzing'?'screen-analyzing':`screen-${id}`).classList.add('active');
+  ['1','2','3','4'].forEach((n,i) => {
+    const el = document.getElementById(`step-${n}`);
+    if (!el) return;
+    const map = {'1':'1','2':'2','3':'3','4':'3'};
+    el.classList.toggle('active', map[n]===String(id));
+    el.classList.toggle('done', parseInt(n) < parseInt(id));
+  });
+}
+function volverFoto() { goScreen('1'); }
+function volverComensales() { goScreen('2'); }
+
+// ── Utils ──
+function fmx(n) { return Number(n).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function setText(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+
+// ── Init ──
+renderComensalesSetup();
+</script>
+</body>
+</html>
